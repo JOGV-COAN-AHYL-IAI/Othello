@@ -1,41 +1,15 @@
 import java.util.ArrayList;
 
-/**
- * Othello AI using Minimax search with Alpha-Beta pruning.
- *
- * Evaluation combines:
- *   1. Positional weights  – corners are highly valuable; X-squares (diagonal
- *      to corners) are dangerous and penalised.
- *   2. Mobility            – having more legal moves than the opponent is good.
- *
- * Rename this class to match your group (e.g. OthelloAI13) and update the
- * file name accordingly before handing in.
- */
 public class OthelloAI implements IOthelloAI {
 
-    // -------------------------------------------------------------------------
-    // Configuration
-    // -------------------------------------------------------------------------
-
-    /** How many plies (half-moves) to search ahead. Increase for stronger play
-     *  at the cost of longer thinking time. 7 is a safe default for 8×8. */
-    private static final int MAX_DEPTH = 7;
+    /** A depth of 8 is a safe default for 8×8., this gives decent thinking time and strong plays */
+    private static final int MAX_DEPTH = 8;
 
     /** Weight given to the mobility term relative to positional weights. */
     private static final int MOBILITY_WEIGHT = 10;
 
-    // -------------------------------------------------------------------------
-    // Positional weight table for the standard 8×8 board
-    // -------------------------------------------------------------------------
 
-    /**
-     * Strategic values per square for 8×8 Othello.
-     *  Corners (120) : can never be flipped – extremely stable.
-     *  X-squares (-40): diagonal to a corner; dangerous if the corner is empty.
-     *  C-squares (-20): edge squares adjacent to a corner; also risky.
-     *  Edges (20/5)   : generally stable once surrounded.
-     *  Inner squares  : modest positive values.
-     */
+    /** Reward values per square */
     private static final int[][] WEIGHTS_8X8 = {
             { 120, -20,  20,   5,   5,  20, -20,  120},
             { -20, -40,  -5,  -5,  -5,  -5, -40,  -20},
@@ -47,21 +21,13 @@ public class OthelloAI implements IOthelloAI {
             { 120, -20,  20,   5,   5,  20, -20,  120}
     };
 
-    // -------------------------------------------------------------------------
-    // Instance state (set once per decideMove call)
-    // -------------------------------------------------------------------------
-
     /** Player number for this AI (1 = black, 2 = white). */
     private int maxPlayer;
 
     /** Opponent's player number. */
     private int minPlayer;
 
-    // -------------------------------------------------------------------------
-    // Performance tracking
-    // -------------------------------------------------------------------------
-
-    /** Total number of moves made by this AI. */
+    /** Total number of moves made by our AI. */
     private int moveCount = 0;
 
     /** Total time spent deciding moves in nanoseconds. */
@@ -70,17 +36,6 @@ public class OthelloAI implements IOthelloAI {
     /** Flag to ensure statistics are only printed once. */
     private boolean statisticsPrinted = false;
 
-    // -------------------------------------------------------------------------
-    // IOthelloAI interface
-    // -------------------------------------------------------------------------
-
-    /**
-     * Selects the best move for the current player using Minimax with
-     * Alpha-Beta pruning.
-     *
-     * @param s The current game state. It is the AI's turn.
-     * @return The position chosen by the AI, or (-1,-1) if no moves exist.
-     */
     @Override
     public Position decideMove(GameState s) {
         long startTime = System.nanoTime();
@@ -116,32 +71,16 @@ public class OthelloAI implements IOthelloAI {
         return bestMove;
     }
 
-    // -------------------------------------------------------------------------
-    // Minimax with Alpha-Beta pruning
-    // -------------------------------------------------------------------------
 
-    /**
-     * Recursive Minimax search with Alpha-Beta pruning.
-     *
-     * The maximising/minimising role is determined by whose turn it is in
-     * {@code state}: if it is {@code maxPlayer}'s turn we maximise, otherwise
-     * we minimise.
-     *
-     * @param state Current game state.
-     * @param depth Remaining search depth.
-     * @param alpha Best value found so far for the maximiser (lower bound).
-     * @param beta  Best value found so far for the minimiser (upper bound).
-     * @return Heuristic (or terminal) value of {@code state}.
-     */
     private int minimax(GameState state, int depth, int alpha, int beta) {
-        // --- Terminal check ---
+        // Terminal check
         if (state.isFinished()) {
             return terminalScore(state);
         }
 
         ArrayList<Position> moves = state.legalMoves();
 
-        // --- Pass: current player has no moves but the game is not over ---
+        // Pass: current player has no moves but the game is not over
         if (moves.isEmpty()) {
             int nextPlayer = (state.getPlayerInTurn() == 1) ? 2 : 1;
             GameState passState = new GameState(state.getBoard(), nextPlayer);
@@ -149,12 +88,12 @@ public class OthelloAI implements IOthelloAI {
             return minimax(passState, depth, alpha, beta);
         }
 
-        // --- Depth cut-off: evaluate with heuristic ---
+        // Depth cut-off: evaluate with heuristic
         if (depth == 0) {
             return evaluate(state);
         }
 
-        // --- Recursive search ---
+        // Recursive search
         if (state.getPlayerInTurn() == maxPlayer) {
             // Maximising node
             int maxVal = Integer.MIN_VALUE;
@@ -180,13 +119,10 @@ public class OthelloAI implements IOthelloAI {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Scoring helpers
-    // -------------------------------------------------------------------------
 
     /**
      * Returns a large positive value if the AI won, large negative if it lost,
-     * or 0 for a draw. Only called on genuinely finished games.
+     * or 0 for a draw.
      */
     private int terminalScore(GameState state) {
         int[] tokens   = state.countTokens();
@@ -197,24 +133,6 @@ public class OthelloAI implements IOthelloAI {
         return 0;
     }
 
-    /**
-     * Heuristic evaluation of a non-terminal state.
-     *
-     * <p>Two components are combined:
-     * <ol>
-     *   <li><b>Positional score</b>: sum of strategic weights for all tokens
-     *       owned by maxPlayer minus the sum for minPlayer.  Encoding stable
-     *       corners as highly positive and risky X-squares as negative guides
-     *       the AI toward strategically strong moves.</li>
-     *   <li><b>Mobility score</b>: the difference in the number of legal moves
-     *       available to each player.  Greater mobility means more options and
-     *       more control over the game; limiting the opponent's choices is just
-     *       as important.</li>
-     * </ol>
-     *
-     * @param state The state to evaluate.
-     * @return A score that is higher the better the state is for maxPlayer.
-     */
     private int evaluate(GameState state) {
         int[][] board = state.getBoard();
         int size  = board.length;
@@ -240,14 +158,8 @@ public class OthelloAI implements IOthelloAI {
     }
 
     /**
-     * Returns the strategic weight for board position ({@code col}, {@code row})
-     * on a board of the given {@code size}.
-     *
-     * <p>For the standard 8×8 board the pre-computed {@link #WEIGHTS_8X8}
-     * table is used directly.  For other sizes a generalised rule is applied:
-     * corners are most valuable, X-squares (one step diagonal from a corner)
-     * are penalised, edges carry a moderate bonus, and all other squares have
-     * a small positive value.</p>
+     * Returns the strategic weight for board position (col,row)
+     * on a board of the given size.
      */
     private int positionWeight(int col, int row, int size) {
         if (size == 8) {
@@ -262,12 +174,8 @@ public class OthelloAI implements IOthelloAI {
         return 3;
     }
 
-    // -------------------------------------------------------------------------
-    // Performance statistics
-    // -------------------------------------------------------------------------
-
     /**
-     * Prints current statistics after each move (lightweight output).
+     * Prints current statistics after each move.
      */
     private void printCurrentStats() {
         double averageTimeSeconds = (totalTimeNanos / (double) moveCount) / 1_000_000_000.0;
@@ -277,7 +185,6 @@ public class OthelloAI implements IOthelloAI {
     /**
      * Prints final performance statistics for this AI to the console.
      * Shows total moves made and average time per move.
-     * Can be called manually if needed.
      */
     public void printStatistics() {
         if (statisticsPrinted) return;

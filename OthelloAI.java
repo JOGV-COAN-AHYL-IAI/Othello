@@ -37,14 +37,14 @@ public class OthelloAI implements IOthelloAI {
      *  Inner squares  : modest positive values.
      */
     private static final int[][] WEIGHTS_8X8 = {
-        { 120, -20,  20,   5,   5,  20, -20,  120},
-        { -20, -40,  -5,  -5,  -5,  -5, -40,  -20},
-        {  20,  -5,  15,   3,   3,  15,  -5,   20},
-        {   5,  -5,   3,   3,   3,   3,  -5,    5},
-        {   5,  -5,   3,   3,   3,   3,  -5,    5},
-        {  20,  -5,  15,   3,   3,  15,  -5,   20},
-        { -20, -40,  -5,  -5,  -5,  -5, -40,  -20},
-        { 120, -20,  20,   5,   5,  20, -20,  120}
+            { 120, -20,  20,   5,   5,  20, -20,  120},
+            { -20, -40,  -5,  -5,  -5,  -5, -40,  -20},
+            {  20,  -5,  15,   3,   3,  15,  -5,   20},
+            {   5,  -5,   3,   3,   3,   3,  -5,    5},
+            {   5,  -5,   3,   3,   3,   3,  -5,    5},
+            {  20,  -5,  15,   3,   3,  15,  -5,   20},
+            { -20, -40,  -5,  -5,  -5,  -5, -40,  -20},
+            { 120, -20,  20,   5,   5,  20, -20,  120}
     };
 
     // -------------------------------------------------------------------------
@@ -56,6 +56,19 @@ public class OthelloAI implements IOthelloAI {
 
     /** Opponent's player number. */
     private int minPlayer;
+
+    // -------------------------------------------------------------------------
+    // Performance tracking
+    // -------------------------------------------------------------------------
+
+    /** Total number of moves made by this AI. */
+    private int moveCount = 0;
+
+    /** Total time spent deciding moves in nanoseconds. */
+    private long totalTimeNanos = 0;
+
+    /** Flag to ensure statistics are only printed once. */
+    private boolean statisticsPrinted = false;
 
     // -------------------------------------------------------------------------
     // IOthelloAI interface
@@ -70,6 +83,8 @@ public class OthelloAI implements IOthelloAI {
      */
     @Override
     public Position decideMove(GameState s) {
+        long startTime = System.nanoTime();
+
         maxPlayer = s.getPlayerInTurn();
         minPlayer = (maxPlayer == 1) ? 2 : 1;
 
@@ -90,6 +105,13 @@ public class OthelloAI implements IOthelloAI {
                 bestMove  = move;
             }
         }
+
+        long endTime = System.nanoTime();
+        totalTimeNanos += (endTime - startTime);
+        moveCount++;
+
+        // Print current statistics after each move
+        printCurrentStats();
 
         return bestMove;
     }
@@ -238,5 +260,37 @@ public class OthelloAI implements IOthelloAI {
         if (isXSquare) return  -30;
         if (isEdge)    return   10;
         return 3;
+    }
+
+    // -------------------------------------------------------------------------
+    // Performance statistics
+    // -------------------------------------------------------------------------
+
+    /**
+     * Prints current statistics after each move (lightweight output).
+     */
+    private void printCurrentStats() {
+        double averageTimeSeconds = (totalTimeNanos / (double) moveCount) / 1_000_000_000.0;
+        System.out.printf("OthelloAI - Move %d | Avg time: %.2f seconds%n", moveCount, averageTimeSeconds);
+    }
+
+    /**
+     * Prints final performance statistics for this AI to the console.
+     * Shows total moves made and average time per move.
+     * Can be called manually if needed.
+     */
+    public void printStatistics() {
+        if (statisticsPrinted) return;
+        statisticsPrinted = true;
+
+        if (moveCount == 0) {
+            System.out.println("OthelloAI Statistics: No moves made.");
+            return;
+        }
+
+        double averageTimeSeconds = (totalTimeNanos / (double) moveCount) / 1_000_000_000.0;
+        System.out.println("\nOthelloAI Statistics:");
+        System.out.println("Total moves: " + moveCount);
+        System.out.printf("Average time per move: %.2f seconds%n", averageTimeSeconds);
     }
 }
